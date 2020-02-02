@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request 
 from textgenrnn import textgenrnn
+
 from nltk.stem.porter import *
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -7,10 +8,17 @@ from sklearn.svm import LinearSVC
 from nltk.stem import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+from keras.models import Sequential
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+
 import string
 import pandas as pd
 import numpy as np
-
+import keras
+import sklearn
+import pickle
 import json
 
 app = Flask(__name__)
@@ -28,7 +36,22 @@ def classifySteam():
 #classifies yelp reviews
 @app.route("/classifyYelp", methods=['GET'])
 def classifyYelp():
-	pass
+	text = json.loads(request.data)["review"]
+	with open('./models/Predict/tokenizer.pickle', 'rb') as handle:
+		tokenizer = pickle.load(handle)
+
+	sequences = tokenizer.texts_to_sequences([text])
+	data = pad_sequences(sequences, maxlen=500)
+
+	new_model = keras.models.load_model('./models/Predict/fakeYelp.h5')
+	result = new_model.predict_proba(np.array(data))
+
+	if result[0][0] < 0.5:
+		prediction = 0
+	else:
+		prediction = 1
+
+	return jsonify(str(prediction))
 
 #generates reviews for products
 #paramters for this request are section and productID
